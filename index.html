@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualización de Pacientes</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #ff1936; 
+            --bg-glass: rgba(255, 255, 255, 0.85);
+            --bg-body: #f5f5f7;
+            --text-main: #1d1d1f;
+            --text-sub: #86868b;
+            --success: #34c759;
+            --error: #ff3b30;
+            --radius: 24px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 420px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--radius);
+            padding: 35px 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+
+        h2 { font-weight: 600; font-size: 1.7rem; text-align: center; margin-bottom: 8px; letter-spacing: -0.8px; }
+        p.subtitle { text-align: center; color: var(--text-sub); font-size: 0.95rem; margin-bottom: 30px; }
+
+        h3 { font-size: 0.8rem; text-transform: uppercase; color: var(--text-sub); margin: 35px 0 15px 0; letter-spacing: 1.2px; display: flex; align-items: center; gap: 10px; }
+        h3 i { color: var(--primary); font-size: 1.1rem; }
+
+        .field { margin-bottom: 22px; position: relative; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; margin-left: 4px; color: #48484a; }
+        
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .input-wrapper i.main-icon { position: absolute; left: 16px; color: var(--text-sub); font-size: 1rem; pointer-events: none; }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 14px 16px 14px 48px;
+            border: 1.5px solid #d2d2d7;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.25s ease;
+            background: #fff;
+            color: var(--text-main);
+            outline: none;
+            appearance: none;
+        }
+
+        .phone-group { display: flex; gap: 8px; }
+        .phone-group select { width: 110px; padding-left: 10px; text-align: center; }
+        .phone-group input { padding-left: 16px; }
+
+        .capitalize-view { text-transform: capitalize; }
+
+        input:disabled, select:disabled { background: #f0f0f2; color: #8e8e93; border-color: #e5e5ea; cursor: not-allowed; }
+        input:focus:not(:disabled), select:focus:not(:disabled), textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(255, 25, 54, 0.15); }
+        textarea { padding-left: 48px; min-height: 80px; resize: none; }
+
+        .btn-edit-inline {
+            position: absolute;
+            right: 0;
+            top: -5px;
+            background: #f5f5f7;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: all 0.2s;
+        }
+        .btn-edit-inline:hover { background: var(--primary); color: white; transform: scale(1.05); }
+
+        .radio-group { display: flex; gap: 12px; }
+        .radio-group label {
+            flex: 1; padding: 14px; background: #fff; border: 1.5px solid #d2d2d7; border-radius: 14px;
+            text-align: center; cursor: pointer; font-weight: 600; transition: 0.3s; margin: 0; display: flex; justify-content: center; align-items: center; gap: 6px;
+        }
+        .radio-group input { display: none; }
+        .radio-group label:has(input:checked) { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+        button.btn-main {
+            width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 16px;
+            font-size: 1.05rem; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+        button:hover { opacity: 0.9; }
+        button:active { transform: scale(0.97); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        
+        .btn-save { background: var(--success) !important; margin-top: 35px; box-shadow: 0 4px 15px rgba(52, 199, 89, 0.3); }
+
+        #save-msg {
+            margin-top: 15px; color: var(--success); font-size: 0.9rem; font-weight: 600; text-align: center;
+            display: flex; align-items: center; justify-content: center; gap: 8px; opacity: 0; transition: opacity 0.4s ease;
+        }
+        #save-msg.show { opacity: 1; }
+
+        .hidden { display: none; }
+        .fade { animation: fadeIn 0.6s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .toggle-pass { position: absolute; right: 16px; color: var(--text-sub); cursor: pointer; font-size: 1rem; }
+    </style>
+</head>
+<body>
+
+<div class="app-container fade">
+    <div id="login-section">
+        <h2>Bienvenido</h2>
+        <p class="subtitle">Ingrese los datos para actualizar la ficha médica.</p>
+        
+        <div class="field">
+            <label>Cédula Representante</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-id-card main-icon"></i>
+                <input type="text" id="login-dni" placeholder="Ej: 12345678">
+            </div>
+        </div>
+        
+        <div class="field">
+            <label>N° Historia</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-folder-open main-icon"></i>
+                <input type="number" id="login-historia" placeholder="Número de registro">
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Contraseña</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-lock main-icon"></i>
+                <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.keyCode==32) return false;">
+                <i class="fa-solid fa-eye toggle-pass" id="eye-icon-login" onclick="togglePasswordVisibility('login-pass', 'eye-icon-login')"></i>
+            </div>
+        </div>
+
+        <button class="btn-main" id="btn-entrar" onclick="validarAcceso()">Entrar <i class="fa-solid fa-arrow-right"></i></button>
+        <p id="lock-msg" style="color: var(--error); font-size: 0.8rem; text-align: center; margin-top: 10px;" class="hidden"></p>
+    </div>
+
+    <div id="form-section" class="hidden">
+        <h2 id="titulo-nombre" class="capitalize-view">Paciente</h2>
+        <p class="subtitle">Actualice la información reciente.</p>
+        
+        <div style="position: relative;">
+            <h3><i class="fa-solid fa-user-pen"></i> Identidad del Niño</h3>
+            <button class="btn-edit-inline" onclick="habilitarEdicion('nino')" title="Editar datos niño">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+        </div>
+
+        <div class="field">
+            <label>Primer Nombre</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-user main-icon"></i>
+                <input type="text" id="upd-n1" class="capitalize-view group-nino" disabled>
+            </div>
+        </div>
+        <div class="field">
+            <label>Segundo Nombre</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-user main-icon"></i>
+                <input type="text" id="upd-n2" class="capitalize-view group-nino" disabled>
+            </div>
+        </div>
+        <div class="field">
+            <label>Primer Apellido</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-user-tag main-icon"></i>
+                <input type="text" id="upd-a1" class="capitalize-view group-nino" disabled>
+            </div>
+        </div>
+        <div class="field">
+            <label>Segundo Apellido</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-user-tag main-icon"></i>
+                <input type="text" id="upd-a2" class="capitalize-view group-nino" disabled>
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Fecha de Nacimiento</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-calendar main-icon"></i>
+                <input type="date" id="upd-fecha" onchange="validarEdadManual()">
+            </div>
+        </div>
+
+        <div id="div-cedula" class="field hidden">
+            <label>Cédula del Niño</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-fingerprint main-icon"></i>
+                <input type="text" id="upd-cedula">
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Género</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-venus-mars main-icon"></i>
+                <select id="upd-genero">
+                    <option value="MASCULINO">Masculino</option>
+                    <option value="FEMENINO">Femenino</option>
+                </select>
+            </div>
+        </div>
+
+        <h3><i class="fa-solid fa-location-dot"></i> Ubicación</h3>
+        <div class="field">
+            <label>Municipio</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-map main-icon"></i>
+                <select id="upd-mun" onchange="cargarParroquias()"></select>
+            </div>
+        </div>
+        <div class="field">
+            <label>Parroquia</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-map-pin main-icon"></i>
+                <select id="upd-par"></select>
+            </div>
+        </div>
+        <div class="field">
+            <label>Sector / Barrio</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-house main-icon"></i>
+                <input type="text" id="upd-sec" class="capitalize-view">
+            </div>
+        </div>
+
+        <h3><i class="fa-solid fa-stethoscope"></i> Salud y Social</h3>
+        <div class="field">
+            <label>Diagnóstico Principal</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-notes-medical main-icon"></i>
+                <select id="upd-diag-p"></select>
+            </div>
+        </div>
+        <div class="field">
+            <label>Otros Diagnósticos / Observaciones</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-comment-medical main-icon"></i>
+                <textarea id="upd-diag-o" placeholder="Indique otros problemas de salud"></textarea>
+            </div>
+        </div>
+
+        <div class="field">
+            <label>¿Visto por Fisiatría?</label>
+            <div class="radio-group">
+                <label><input type="radio" name="fisiatria" value="true"> SÍ</label>
+                <label><input type="radio" name="fisiatria" value="false" checked> NO</label>
+            </div>
+        </div>
+
+        <div class="field">
+            <label>¿Está escolarizado?</label>
+            <div class="radio-group">
+                <label><input type="radio" name="escolarizado" value="true"> SÍ</label>
+                <label><input type="radio" name="escolarizado" value="false" checked> NO</label>
+            </div>
+        </div>
+
+        <h3><i class="fa-solid fa-wheelchair"></i> Movilidad</h3>
+        <div class="field">
+            <label>¿Camina Independiente?</label>
+            <div class="radio-group">
+                <label><input type="radio" name="camina" value="true" onchange="toggleTraslado()"> SÍ</label>
+                <label><input type="radio" name="camina" value="false" checked onchange="toggleTraslado()"> NO</label>
+            </div>
+        </div>
+
+        <div id="div-traslado" class="field">
+            <label>Equipo de traslado</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-truck-ramp-box main-icon"></i>
+                <select id="upd-equipo">
+                    <option value="SILLA DE RUEDAS">Silla de ruedas</option>
+                    <option value="ANDADERA">Andadera</option>
+                    <option value="COCHE ORTOPÉDICO">Coche ortopédico</option>
+                    <option value="OTRO">Otro</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="position: relative; margin-top: 40px;">
+            <h3><i class="fa-solid fa-user-shield"></i> Datos del Representante</h3>
+            <button class="btn-edit-inline" onclick="habilitarEdicion('rep')" title="Editar datos representante">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+        </div>
+
+        <div class="field">
+            <label>Nombre(s) Representante</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-user main-icon"></i>
+                <input type="text" id="rep-nombre" class="capitalize-view group-rep" disabled>
+            </div>
+        </div>
+        <div class="field">
+            <label>Apellido(s) Representante</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-user-tag main-icon"></i>
+                <input type="text" id="rep-apellido" class="capitalize-view group-rep" disabled>
+            </div>
+        </div>
+        <div class="field">
+            <label>Cédula Representante</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-id-card main-icon"></i>
+                <input type="text" id="rep-cedula" class="group-rep" disabled>
+            </div>
+        </div>
+        <div class="field">
+            <label>Teléfono de Contacto</label>
+            <div class="phone-group">
+                <select id="rep-cod" class="group-rep" disabled>
+                    <option value="0412">0412</option>
+                    <option value="0412">0422</option>
+                    <option value="0414">0414</option>
+                    <option value="0424">0424</option>
+                    <option value="0416">0416</option>
+                    <option value="0426">0426</option>
+                </select>
+                <input type="number" id="rep-num" class="group-rep" placeholder="1234567" disabled oninput="if(this.value.length > 7) this.value = this.value.slice(0, 7);">
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Cambiar Contraseña (Opcional)</label>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-key main-icon"></i>
+                <input type="password" id="upd-new-pass" placeholder="Mantener Actual" onkeydown="if(event.keyCode==32) return false;">
+                <i class="fa-solid fa-eye toggle-pass" id="eye-icon-upd" onclick="togglePasswordVisibility('upd-new-pass', 'eye-icon-upd')"></i>
+            </div>
+        </div>
+
+        <button class="btn-main btn-save" id="btn-guardar" onclick="guardarDatos()">Guardar Cambios <i class="fa-solid fa-cloud-arrow-up"></i></button>
+        <div id="save-msg"><i class="fa-solid fa-circle-check"></i> Datos actualizados con éxito</div>
+    </div>
+</div>
+
+<script>
+    const _URL = 'https://gedeqtoowqevjvbjrenr.supabase.co';
+    const _KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdlZGVxdG9vd3Fldmp2YmpyZW5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3NjAzODAsImV4cCI6MjA4NzMzNjM4MH0.fArL01V5XRQWpSxSDj1Ds9YKYcLBAxKLskc7osXcBpQ';
+    const supabaseClient = supabase.createClient(_URL, _KEY);
+
+    let pacienteActual = null;
+    let intentosFallidos = 0;
+
+    const listaDiagnosticos = ["Acidosis Tubular Renal", "Acondroplasia", "Acortamiento De Miembros", "Acortamiento De Tendones", "Actitud Escoliótica", "Agenesia Del Cuerpo Calloso", "Agenesia Renal", "Albinismo", "Anemia Falciforme", "Anisometropía", "Anomalía De Axenfeld-rieger", "Artritis", "Artritis De Cadera", "Atrofia Cerebral", "Artrogriposis", "Atresia", "Atresia Tricuspídea", "Atrofia Muscular Espinal", "Cáncer (Paciente Oncológico)", "Cardiopatía Congénita", "Catarata Congénita", "Colagenopatía", "Conductas Disruptivas", "Crisis Convulsiva", "Cuadriparesia", "Cuadriplejia Espástica", "Deformidad De Sprengel", "Deformidad Torácica Y Lumbar", "Dermatitis", "Dermatitis Atópica", "Diabetes", "Dificultad De Aprendizaje", "Retraso Del Crecimiento", "Discapacidad Auditiva", "Discapacidad Intelectual", "Discapacidad Motora", "Discapacidad Visual", "Dislalia", "Dislexia", "Dismetría De Extremidades", "Displasia De Cadera", "Displasia Ectodérmica", "Displasia Esquelética", "Displejia", "Displejia Espástica", "Distonía Generalizada Axial", "Distrofia De La Retina", "Distrofia Muscular", "Distrofia Muscular De Duchenne", "Elefantiasis", "En Estudio", "Encefalitis", "Encefalocel", "Encefalomielitis", "Encefalopatía Epiléptica", "Encefalopatía Estática", "Encefalopatía Hepática", "Encefalopatía Hipóxico-isquémica", "Entesopatía Del Tendón De Aquiles", "Epidermólisis Ampollosa", "Epilepsia", "Errores Innatos Del Metabolismo", "Escápula Alada", "Esclerosis", "Esclerosis Tuberosa", "Escoliosis", "Espasmo Del Sollozo", "Espasmos Epilépticos", "Espasticidad Motora", "Espina Bífida", "Esquizencefalia", "Estenosis Pulmonar", "Estrabismo", "Falleció", "Fibromatosis", "Anquiloglosia", "Genu Recurvatum", "Genu Valgo", "Genu Varo", "Hemiparesia", "Hemiplejia", "Hidrocefalia", "Hidronefrosis", "Hipermetropía", "Hiperplasia Adrenal Congénita", "Hipertiroidismo", "Hipertonía Muscular", "Hipertrofia Muscular", "Hipoacusia", "Hipoplasia Craneofacial", "Hipoplasia", "Hipoplasia Del Nervio Óptico", "Hipotiroidismo", "Hipotiroidismo Congénito", "Hipotonía", "Hipoxia Neonatal", "Hipoxia Perinatal", "Inmadurez Cognitiva", "Inversión Del Cromosoma 9", "Isquemia", "Labio Leporino", "Leucemia", "Leucodistrofia", "Leucomalacia Periventricular", "Litiasis Renal", "Lordosis", "Malformación Arteriovenosa Isquémica", "Malformaciones Congénitas", "Marcha Aducta", "Meningitis Bacteriana", "Microcefalia", "Microtia", "Mielomeningocele", "Mucopolisacaridosis", "Mutismo Selectivo", "Nefritis", "Neuroblastoma", "Neurofibromatosis", "Neuromielitis", "Neuromúsculo-esquelética", "Osteogénesis Imperfecta", "Paladar Hendido", "Parálisis Braquial", "Parálisis Cerebral Espástica", "Parálisis Cerebral Infantil", "Parálisis Facial", "Parálisis Flácida", "Paraparesia Espástica Hereditaria", "Pie Aducto", "Pie Equinovaro", "Pie Plano", "Polidactilia", "Prematuridad", "Ptosis Palpebral", "Retardo En La Marcha", "Retraso Global Del Desarrollo", "Retraso Psicomotor", "Retinoblastoma", "Retraso En El Lenguaje", "Síncope Vasovagal", "Síndrome De Alopecia", "Síndrome Cerebeloso", "Síndrome Convulsivo", "Síndrome De Asperger", "Síndrome De Down", "Síndrome De Ehlers-danlos", "Síndrome De Encefalopatía Progresiva", "Síndrome De Escobar", "Síndrome De Goldenhar", "Síndrome De Guillain-barré", "Síndrome De Hanhart", "Síndrome De Holt Oram", "Síndrome De Hunter", "Síndrome De Kabuki", "Síndrome De Klinefelter", "Síndrome De Leigh", "Síndrome De Leser-trélat", "Síndrome De Malabsorción", "Síndrome De Marfan", "Síndrome De Mobius", "Síndrome De Ohtahara", "Síndrome De Poland", "Síndrome De Pompe", "Síndrome De Rett", "Síndrome De Rubinstein-taybi", "Síndrome De Turner", "Síndrome De Vacterl", "Síndrome De West", "Síndrome De Wiedemann-steiner", "Síndrome De Williams", "Síndrome Genético En Estudio", "Síndrome Ictérico", "Síndrome De Perthes", "Síndrome De Prader-willi", "Síndrome De Beckwith-wiedemann", "Soplo Cardíaco", "Tabique Nasal Desviado", "Tetraparesia Espástica", "Tiña Capitis", "Pectus Excavatum", "Torsión Tibial Interna", "Tortículis Congénita", "Toxoplasmosis", "Toxoplasmosis Congénita", "Trastorno De Ansiedad", "Trastorno Por Déficit De Atención E Hiperactividad", "Trastorno De La Conducta", "Trastorno De La Marcha", "Trastorno Del Aprendizaje", "Trastorno Del Habla", "Trastorno Del Lenguaje", "Trastorno Del Neurodesarrollo", "Trastorno Mental", "Trastorno Metabólico", "Trastorno Del Espectro Autista", "Trastornos Del Sueño", "Trauma Raquimedular Torácico", "Traumatismo Craneoencefálico", "Trastorno Paroxístico No Epiléptico", "Virus De Epstein-barr", "Otro"];
+
+    const datosZulia = {
+        "Otros (Fuera del Zulia)": ["Foráneo"],
+        "Almirante Padilla": ["Isla de Toas", "Monagas"],
+        "Baralt": ["Libertador", "General Urdaneta", "Marcelino Briceño", "Pueblo Nuevo", "Manuel Guanipa Matos"],
+        "Cabimas": ["Ambrosio", "Carmen Herrera", "La Rosa", "Germán Ríos Linares", "Jorge Hernández", "Arístides Calvani", "Punta Gorda", "Rómulo Betancourt", "San Benito"],
+        "Catatumbo": ["Encontrados", "Udón Pérez"],
+        "Colón": ["Moralito", "San Carlos del Zulia", "Santa Cruz del Zulia", "Santa Bárbara", "Urribarrí"],
+        "Francisco Javier Pulgar": ["Agustín Codazzi", "Carlos Quevedo", "Francisco Javier Pulgar", "Simón Rodríguez"],
+        "Guajira": ["Alta Guajira", "Elias Sánchez Goyoyo", "Guajira", "Sinamaica"],
+        "Jesús Enrique Lossada": ["La Concepción", "San José", "Mariano Parra León", "José Ramón Yépez"],
+        "Jesús María Semprún": ["Jesús María Semprún", "Barí"],
+        "La Cañada de Urdaneta": ["Concepción", "Andrés Bello", "Chiquinquirá", "El Carmelo", "Potreritos"],
+        "Lagunillas": ["Libertad", "Alonso de Ojeda", "Venezuela", "Eleazar López Contreras", "Campo Lara"],
+        "Machiques de Perijá": ["Libertad", "San José de Perijá", "Bartolomé de las Casas", "Río Negro"],
+        "Mara": ["San Rafael", "La Sierrita", "Las Parcelas", "Luis de Vicente", "Monseñor Marcos Sergio Godoy", "Ricaurte", "Tamare"],
+        "Maracaibo": ["Antonio Borjas Romero", "Bolívar", "Cacique Mara", "Caracciolo Parra Pérez", "Cecilio Acosta", "Cristo de Aranza", "Coquivacoa", "Chiquinquirá", "Francisco Eugenio Bustamante", "Idelfonso Vásquez", "Juana de Ávila", "Luis Hurtado Higuera", "Manuel Dagnino", "Olegario Villalobos", "Raúl Leoni", "Santa Lucía", "Venancio Pulgar", "San Isidro"],
+        "Miranda": ["Altagracia", "Faria", "Ana María Campos", "San Antonio", "San José"],
+        "Páez": ["Guajira", "Elias Sánchez Goyoyo", "Sinamaica", "Alta Guajira"],
+        "Rosario de Perijá": ["Rosario", "Donaldo García", "Sixto Zambrano"],
+        "San Francisco": ["San Francisco", "El Bajo", "Domitila Flores", "Francisco Ochoa", "Los Cortijos", "Marcial Hernández", "José Domingo Rus"],
+        "Santa Rita": ["Santa Rita", "El Mene", "Pedro Lucas Urribarrí", "José Cenobio Urribarrí"],
+        "Simón Bolívar": ["Manuel Manrique", "Rafael Maria Baralt", "Rafael Urdaneta"],
+        "Sucre": ["Bobures", "Gibraltar", "Heras", "Monseñor Arturo Celeste Álvarez", "Rómulo Gallegos", "El Batey"],
+        "Valmore Rodríguez": ["Rafael Urdaneta", "La Victoria", "Raúl Cuenca"]
+    };
+
+    function aNombrePropio(texto) {
+        if (!texto) return "";
+        return texto.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    }
+
+    function capitalizarDiagnostico(texto) {
+        const conectores = ["de", "del", "la", "en", "el", "y", "a", "por", "e"];
+        return texto.toLowerCase().split(' ').map((palabra, index) => {
+            if (index > 0 && conectores.includes(palabra)) return palabra;
+            return palabra.charAt(0).toUpperCase() + palabra.slice(1);
+        }).join(' ');
+    }
+
+    function inicializarDiagnosticos() {
+        const selectDiag = document.getElementById('upd-diag-p');
+        selectDiag.innerHTML = '<option value="">Seleccione Diagnóstico</option>';
+        listaDiagnosticos.sort().forEach(diag => {
+            const opt = document.createElement('option');
+            opt.value = diag.toUpperCase();
+            opt.textContent = capitalizarDiagnostico(diag);
+            selectDiag.appendChild(opt);
+        });
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+        const passInput = document.getElementById(inputId);
+        const eyeIcon = document.getElementById(iconId);
+        if (passInput.type === "password") {
+            passInput.type = "text";
+            eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            passInput.type = "password";
+            eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
+
+    async function generarHash(password) {
+        // Limpiamos espacios por si acaso antes del hash
+        const cleanPass = password.replace(/\s/g, '');
+        const msgUint8 = new TextEncoder().encode(cleanPass);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+        return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function inicializarMunicipios() {
+        const selectMun = document.getElementById('upd-mun');
+        selectMun.innerHTML = '<option value="">Seleccione Municipio</option>';
+        Object.keys(datosZulia).sort().forEach(m => {
+            selectMun.innerHTML += `<option value="${m}">${m}</option>`;
+        });
+    }
+
+    function cargarParroquias() {
+        const mun = document.getElementById('upd-mun').value;
+        const selectPar = document.getElementById('upd-par');
+        selectPar.innerHTML = '';
+        if(datosZulia[mun]) {
+            datosZulia[mun].sort().forEach(p => {
+                selectPar.innerHTML += `<option value="${p}">${p}</option>`;
+            });
+        }
+    }
+
+    function habilitarEdicion(grupo) {
+        const clase = grupo === 'nino' ? '.group-nino' : '.group-rep';
+        document.querySelectorAll(clase).forEach(el => {
+            el.disabled = !el.disabled;
+        });
+    }
+
+    async function validarAcceso() {
+        const dni = document.getElementById('login-dni').value;
+        const historia = document.getElementById('login-historia').value;
+        // Limpiamos espacios en blanco de la contraseña recibida
+        const passRaw = document.getElementById('login-pass').value;
+        const passPlana = passRaw.replace(/\s/g, '');
+
+        if(!dni || !historia || !passPlana) return alert("Complete todos los campos.");
+
+        const passHash = await generarHash(passPlana);
+        const { data, error } = await supabaseClient.from('pacientes').select('*')
+            .eq('dni_padre', dni).eq('id_historia', parseInt(historia)).eq('password', passHash).maybeSingle();
+
+        if (data) {
+            pacienteActual = data;
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('form-section').classList.remove('hidden');
+            document.getElementById('form-section').classList.add('fade');
+            
+            document.getElementById('titulo-nombre').innerText = aNombrePropio(`${data.nombre1 || ''} ${data.apellido1 || ''}`);
+            
+            // Carga Niño
+            document.getElementById('upd-n1').value = aNombrePropio(data.nombre1);
+            document.getElementById('upd-n2').value = aNombrePropio(data.nombre2);
+            document.getElementById('upd-a1').value = aNombrePropio(data.apellido1);
+            document.getElementById('upd-a2').value = aNombrePropio(data.apellido2);
+            document.getElementById('upd-fecha').value = data.fecha_nacimiento || '';
+            document.getElementById('upd-cedula').value = data.cedula_niño || '';
+            document.getElementById('upd-genero').value = data.genero ? data.genero.toUpperCase() : 'MASCULINO';
+            
+            // Carga Representante
+            document.getElementById('rep-nombre').value = aNombrePropio(data.nombre_padre);
+            document.getElementById('rep-apellido').value = aNombrePropio(data.apellido_padre);
+            document.getElementById('rep-cedula').value = data.dni_padre;
+            
+            if (data.telefono_padre) {
+                const telStr = String(data.telefono_padre);
+                if (telStr.length > 7) {
+                    document.getElementById('rep-cod').value = telStr.slice(0, 4);
+                    document.getElementById('rep-num').value = telStr.slice(4);
+                } else {
+                    document.getElementById('rep-num').value = telStr;
+                }
+            }
+
+            inicializarMunicipios();
+            inicializarDiagnosticos();
+
+            if (data.municipio) {
+                const munFormat = Object.keys(datosZulia).find(m => m.toUpperCase() === data.municipio.toUpperCase());
+                if(munFormat){
+                    document.getElementById('upd-mun').value = munFormat;
+                    cargarParroquias();
+                    const parFormat = datosZulia[munFormat].find(p => p.toUpperCase() === data.parroquia.toUpperCase());
+                    if (parFormat) document.getElementById('upd-par').value = parFormat;
+                }
+            }
+            
+            document.getElementById('upd-sec').value = aNombrePropio(data.sector);
+            if (data.diagnostico_principal) document.getElementById('upd-diag-p').value = data.diagnostico_principal.toUpperCase();
+            document.getElementById('upd-diag-o').value = data.otros_diagnosticos || '';
+
+            marcarRadio('escolarizado', data.escolarizado);
+            marcarRadio('fisiatria', data.vio_fisiatria);
+            marcarRadio('camina', data.camina_independiente);
+            
+            if (data.equipo_traslado) document.getElementById('upd-equipo').value = data.equipo_traslado;
+
+            validarEdadManual();
+            toggleTraslado();
+        } else {
+            intentosFallidos++;
+            if (intentosFallidos >= 5) bloquearLogin();
+            else alert("Datos incorrectos.");
+        }
+    }
+
+    function bloquearLogin() {
+        const btn = document.getElementById('btn-entrar');
+        const msg = document.getElementById('lock-msg');
+        btn.disabled = true;
+        let seg = 60;
+        const int = setInterval(() => {
+            seg--;
+            msg.innerText = `Demasiados intentos. Espere ${seg}s.`;
+            msg.classList.remove('hidden');
+            if (seg <= 0) { clearInterval(int); btn.disabled = false; msg.classList.add('hidden'); intentosFallidos = 0; }
+        }, 1000);
+    }
+
+    function marcarRadio(nombre, valor) {
+        const radios = document.getElementsByName(nombre);
+        for (let r of radios) { if (r.value === String(valor)) r.checked = true; }
+    }
+
+    function validarEdadManual() {
+        const fecha = document.getElementById('upd-fecha').value;
+        if (!fecha) return;
+        const edad = new Date().getFullYear() - new Date(fecha).getFullYear();
+        document.getElementById('div-cedula').classList.toggle('hidden', edad < 9);
+    }
+
+    function toggleTraslado() {
+        const caminaRadios = document.querySelector('input[name="camina"]:checked');
+        const camina = caminaRadios ? caminaRadios.value === "true" : false;
+        const divTraslado = document.getElementById('div-traslado');
+        const selectEquipo = document.getElementById('upd-equipo');
+        
+        if (camina) {
+            divTraslado.classList.add('hidden');
+        } else {
+            divTraslado.classList.remove('hidden');
+            if (!selectEquipo.value) selectEquipo.selectedIndex = 0; 
+        }
+    }
+
+async function guardarDatos() {
+    const btn = document.getElementById('btn-guardar');
+    const msg = document.getElementById('save-msg');
+    
+    // Validaciones básicas
+    const munVal = document.getElementById('upd-mun').value;
+    const parVal = document.getElementById('upd-par').value;
+    const diagVal = document.getElementById('upd-diag-p').value;
+    const telNum = document.getElementById('rep-num').value;
+    
+    // Limpiamos espacios en blanco de la nueva contraseña si existiera
+    const newPassRaw = document.getElementById('upd-new-pass').value;
+    const newPass = newPassRaw.replace(/\s/g, '');
+
+    if(!munVal || !parVal) return alert("Seleccione Municipio y Parroquia");
+    if(!diagVal) return alert("Seleccione un Diagnóstico Principal");
+    if(telNum.length !== 7) return alert("El número de teléfono debe tener 7 dígitos (sin contar la operadora)");
+
+    btn.disabled = true;
+    btn.innerHTML = 'Guardando... <i class="fa-solid fa-spinner fa-spin"></i>';
+
+    const toUpperValue = (id) => {
+        const el = document.getElementById(id);
+        return el && el.value ? el.value.trim().toUpperCase() : "";
+    };
+
+    const caminaRadios = document.querySelector('input[name="camina"]:checked');
+    const caminaIndependiente = caminaRadios ? caminaRadios.value === "true" : false;
+    let equipoTrasladoFinal = caminaIndependiente ? null : document.getElementById('upd-equipo').value.toUpperCase();
+
+    const telefonoCompleto = document.getElementById('rep-cod').value + telNum;
+
+    const updates = {
+        // Niño
+        nombre1: toUpperValue('upd-n1'),
+        nombre2: toUpperValue('upd-n2'),
+        apellido1: toUpperValue('upd-a1'),
+        apellido2: toUpperValue('upd-a2'),
+        fecha_nacimiento: document.getElementById('upd-fecha').value,
+        cedula_niño: document.getElementById('upd-cedula').value,
+        genero: document.getElementById('upd-genero').value.toUpperCase(),
+        // Representante
+        nombre_padre: toUpperValue('rep-nombre'),
+        apellido_padre: toUpperValue('rep-apellido'),
+        dni_padre: toUpperValue('rep-cedula'),
+        telefono_padre: telefonoCompleto,
+        // Ubicación / Salud
+        municipio: munVal.toUpperCase(),
+        parroquia: parVal.toUpperCase(),
+        sector: toUpperValue('upd-sec'),
+        diagnostico_principal: diagVal.toUpperCase(),
+        otros_diagnosticos: toUpperValue('upd-diag-o'),
+        vio_fisiatria: document.querySelector('input[name="fisiatria"]:checked').value === "true",
+        camina_independiente: caminaIndependiente,
+        escolarizado: document.querySelector('input[name="escolarizado"]:checked').value === "true",
+        equipo_traslado: equipoTrasladoFinal,
+        actualizado: true,
+        ultima_edicion: new Date()
+    };
+
+    // Solo si el usuario escribió algo (después de limpiar espacios)
+    if (newPass !== "") {
+        updates.password = await generarHash(newPass);
+    }
+
+    const { error } = await supabaseClient.from('pacientes').update(updates).eq('id_historia', pacienteActual.id_historia);
+
+    if (!error) { 
+        msg.classList.add('show');
+        btn.disabled = false;
+        btn.innerHTML = 'Guardar Cambios <i class="fa-solid fa-cloud-arrow-up"></i>';
+        
+        document.getElementById('titulo-nombre').innerText = aNombrePropio(`${updates.nombre1} ${updates.apellido1}`);
+        
+        // Bloquear campos de edición manual tras guardar
+        document.querySelectorAll('.group-nino, .group-rep').forEach(el => el.disabled = true);
+        
+        // Limpiar campo de nueva contraseña
+        document.getElementById('upd-new-pass').value = "";
+        
+        // Formatear visualmente
+        document.getElementById('rep-nombre').value = aNombrePropio(updates.nombre_padre);
+        document.getElementById('rep-apellido').value = aNombrePropio(updates.apellido_padre);
+        
+        setTimeout(() => msg.classList.remove('show'), 5000);
+    } else { 
+        alert("Error al guardar: " + error.message);
+        btn.disabled = false;
+        btn.innerHTML = 'Guardar Cambios <i class="fa-solid fa-cloud-arrow-up"></i>';
+    }
+}
+</script>
+</body>
+</html>
