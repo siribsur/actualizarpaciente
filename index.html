@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Actualización de Pacientes</title>
-    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -345,12 +345,11 @@
             <label>Teléfono de Contacto</label>
             <div class="phone-group">
                 <select id="rep-cod" class="group-rep" disabled>
-                    <option value="0412">0412</option>
-                    <option value="0412">0422</option>
-                    <option value="0414">0414</option>
-                    <option value="0424">0424</option>
-                    <option value="0416">0416</option>
-                    <option value="0426">0426</option>
+                    <option value="412">0412</option>
+                    <option value="424">0424</option>
+                    <option value="414">0414</option>
+                    <option value="426">0426</option>
+                    <option value="416">0416</option>
                 </select>
                 <input type="number" id="rep-num" class="group-rep" placeholder="1234567" disabled oninput="if(this.value.length > 7) this.value = this.value.slice(0, 7);">
             </div>
@@ -443,7 +442,6 @@
     }
 
     async function generarHash(password) {
-        // Limpiamos espacios por si acaso antes del hash
         const cleanPass = password.replace(/\s/g, '');
         const msgUint8 = new TextEncoder().encode(cleanPass);
         const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
@@ -476,15 +474,22 @@
         });
     }
 
-    async function validarAcceso() {
-        const dni = document.getElementById('login-dni').value;
-        const historia = document.getElementById('login-historia').value;
-        // Limpiamos espacios en blanco de la contraseña recibida
-        const passRaw = document.getElementById('login-pass').value;
-        const passPlana = passRaw.replace(/\s/g, '');
+async function validarAcceso() {
+    const btn = document.getElementById('btn-entrar');
+    const dni = document.getElementById('login-dni').value;
+    const historia = document.getElementById('login-historia').value;
+    const passRaw = document.getElementById('login-pass').value;
+    const passPlana = passRaw.replace(/\s/g, '');
 
-        if(!dni || !historia || !passPlana) return alert("Complete todos los campos.");
+    if(!dni || !historia || !passPlana) return alert("Complete todos los campos.");
 
+    // --- EFECTO DE CARGA ---
+    const originalContent = btn.innerHTML; // Guardamos "Entrar" y el icono
+    btn.disabled = true;
+    btn.innerHTML = 'Verificando... <i class="fa-solid fa-circle-notch fa-spin"></i>';
+    // -----------------------
+
+    try {
         const passHash = await generarHash(passPlana);
         const { data, error } = await supabaseClient.from('pacientes').select('*')
             .eq('dni_padre', dni).eq('id_historia', parseInt(historia)).eq('password', passHash).maybeSingle();
@@ -497,7 +502,7 @@
             
             document.getElementById('titulo-nombre').innerText = aNombrePropio(`${data.nombre1 || ''} ${data.apellido1 || ''}`);
             
-            // Carga Niño
+            // Llenado de campos (tu lógica actual se mantiene igual...)
             document.getElementById('upd-n1').value = aNombrePropio(data.nombre1);
             document.getElementById('upd-n2').value = aNombrePropio(data.nombre2);
             document.getElementById('upd-a1').value = aNombrePropio(data.apellido1);
@@ -506,16 +511,15 @@
             document.getElementById('upd-cedula').value = data.cedula_niño || '';
             document.getElementById('upd-genero').value = data.genero ? data.genero.toUpperCase() : 'MASCULINO';
             
-            // Carga Representante
             document.getElementById('rep-nombre').value = aNombrePropio(data.nombre_padre);
             document.getElementById('rep-apellido').value = aNombrePropio(data.apellido_padre);
             document.getElementById('rep-cedula').value = data.dni_padre;
             
             if (data.telefono_padre) {
-                const telStr = String(data.telefono_padre);
-                if (telStr.length > 7) {
-                    document.getElementById('rep-cod').value = telStr.slice(0, 4);
-                    document.getElementById('rep-num').value = telStr.slice(4);
+                let telStr = String(data.telefono_padre).replace('+58', '');
+                if (telStr.length === 10) {
+                    document.getElementById('rep-cod').value = telStr.slice(0, 3);
+                    document.getElementById('rep-num').value = telStr.slice(3);
                 } else {
                     document.getElementById('rep-num').value = telStr;
                 }
@@ -546,12 +550,26 @@
 
             validarEdadManual();
             toggleTraslado();
-        } else {
+
+} else {
             intentosFallidos++;
-            if (intentosFallidos >= 5) bloquearLogin();
-            else alert("Datos incorrectos.");
+            if (intentosFallidos >= 5) {
+                bloquearLogin();
+            } else {
+                alert("Datos incorrectos.");
+                
+                // Estas son las líneas que restauran el botón:
+                btn.disabled = false;
+                btn.innerHTML = originalContent; 
+            }
         }
+    } catch (err) {
+        console.error(err);
+        alert("Ocurrió un error en la conexión.");
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
     }
+}
 
     function bloquearLogin() {
         const btn = document.getElementById('btn-entrar');
@@ -596,63 +614,65 @@ async function guardarDatos() {
     const btn = document.getElementById('btn-guardar');
     const msg = document.getElementById('save-msg');
     
-    // Validaciones básicas
     const munVal = document.getElementById('upd-mun').value;
     const parVal = document.getElementById('upd-par').value;
     const diagVal = document.getElementById('upd-diag-p').value;
-    const telNum = document.getElementById('rep-num').value;
     
-    // Limpiamos espacios en blanco de la nueva contraseña si existiera
+    // 1. Obtenemos los valores
+    let telNum = document.getElementById('rep-num').value.trim();
+    let codOperadora = document.getElementById('rep-cod').value; // Ej: 412
+    
     const newPassRaw = document.getElementById('upd-new-pass').value;
     const newPass = newPassRaw.replace(/\s/g, '');
 
     if(!munVal || !parVal) return alert("Seleccione Municipio y Parroquia");
     if(!diagVal) return alert("Seleccione un Diagnóstico Principal");
-    if(telNum.length !== 7) return alert("El número de teléfono debe tener 7 dígitos (sin contar la operadora)");
+    
+    // 2. LIMPIEZA CRÍTICA: 
+    // Si el usuario escribió el cero (ej: 0412...), lo eliminamos.
+    // También nos aseguramos de que la operadora no tenga el cero.
+    telNum = telNum.replace(/^0+/, ''); 
+    codOperadora = codOperadora.replace(/^0+/, '');
+
+    // 3. VALIDACIÓN: El cuerpo del número debe tener 7 dígitos (sin el 0 y sin la operadora)
+    if(telNum.length !== 7) {
+        return alert("Por favor, ingrese los 7 dígitos del número después del código de operadora.");
+    }
 
     btn.disabled = true;
     btn.innerHTML = 'Guardando... <i class="fa-solid fa-spinner fa-spin"></i>';
 
-    const toUpperValue = (id) => {
-        const el = document.getElementById(id);
-        return el && el.value ? el.value.trim().toUpperCase() : "";
-    };
-
-    const caminaRadios = document.querySelector('input[name="camina"]:checked');
-    const caminaIndependiente = caminaRadios ? caminaRadios.value === "true" : false;
-    let equipoTrasladoFinal = caminaIndependiente ? null : document.getElementById('upd-equipo').value.toUpperCase();
-
-    const telefonoCompleto = document.getElementById('rep-cod').value + telNum;
+    // 4. CONSTRUCCIÓN FINAL PROFESIONAL
+    // Esto garantiza el formato +584121234567
+    const telefonoCompleto = `+58${codOperadora}${telNum}`;
 
     const updates = {
-        // Niño
-        nombre1: toUpperValue('upd-n1'),
-        nombre2: toUpperValue('upd-n2'),
-        apellido1: toUpperValue('upd-a1'),
-        apellido2: toUpperValue('upd-a2'),
+        nombre1: document.getElementById('upd-n1').value.trim().toUpperCase(),
+        nombre2: document.getElementById('upd-n2').value.trim().toUpperCase(),
+        apellido1: document.getElementById('upd-a1').value.trim().toUpperCase(),
+        apellido2: document.getElementById('upd-a2').value.trim().toUpperCase(),
         fecha_nacimiento: document.getElementById('upd-fecha').value,
         cedula_niño: document.getElementById('upd-cedula').value,
         genero: document.getElementById('upd-genero').value.toUpperCase(),
-        // Representante
-        nombre_padre: toUpperValue('rep-nombre'),
-        apellido_padre: toUpperValue('rep-apellido'),
-        dni_padre: toUpperValue('rep-cedula'),
-        telefono_padre: telefonoCompleto,
-        // Ubicación / Salud
+        nombre_padre: document.getElementById('rep-nombre').value.trim().toUpperCase(),
+        apellido_padre: document.getElementById('rep-apellido').value.trim().toUpperCase(),
+        dni_padre: document.getElementById('rep-cedula').value.trim().toUpperCase(),
+        
+        telefono_padre: telefonoCompleto, // <--- AQUÍ SE GUARDA CORRECTAMENTE
+        
         municipio: munVal.toUpperCase(),
         parroquia: parVal.toUpperCase(),
-        sector: toUpperValue('upd-sec'),
+        sector: document.getElementById('upd-sec').value.trim().toUpperCase(),
         diagnostico_principal: diagVal.toUpperCase(),
-        otros_diagnosticos: toUpperValue('upd-diag-o'),
+        otros_diagnosticos: document.getElementById('upd-diag-o').value.trim().toUpperCase(),
         vio_fisiatria: document.querySelector('input[name="fisiatria"]:checked').value === "true",
-        camina_independiente: caminaIndependiente,
+        camina_independiente: document.querySelector('input[name="camina"]:checked').value === "true",
         escolarizado: document.querySelector('input[name="escolarizado"]:checked').value === "true",
-        equipo_traslado: equipoTrasladoFinal,
+        equipo_traslado: (document.querySelector('input[name="camina"]:checked').value === "true") ? null : document.getElementById('upd-equipo').value.toUpperCase(),
         actualizado: true,
         ultima_edicion: new Date()
     };
 
-    // Solo si el usuario escribió algo (después de limpiar espacios)
     if (newPass !== "") {
         updates.password = await generarHash(newPass);
     }
@@ -663,27 +683,15 @@ async function guardarDatos() {
         msg.classList.add('show');
         btn.disabled = false;
         btn.innerHTML = 'Guardar Cambios <i class="fa-solid fa-cloud-arrow-up"></i>';
-        
-        document.getElementById('titulo-nombre').innerText = aNombrePropio(`${updates.nombre1} ${updates.apellido1}`);
-        
-        // Bloquear campos de edición manual tras guardar
-        document.querySelectorAll('.group-nino, .group-rep').forEach(el => el.disabled = true);
-        
-        // Limpiar campo de nueva contraseña
-        document.getElementById('upd-new-pass').value = "";
-        
-        // Formatear visualmente
-        document.getElementById('rep-nombre').value = aNombrePropio(updates.nombre_padre);
-        document.getElementById('rep-apellido').value = aNombrePropio(updates.apellido_padre);
-        
         setTimeout(() => msg.classList.remove('show'), 5000);
+        
+        // Bloquear campos de nuevo
+        document.querySelectorAll('.group-nino, .group-rep').forEach(el => el.disabled = true);
     } else { 
         alert("Error al guardar: " + error.message);
         btn.disabled = false;
-        btn.innerHTML = 'Guardar Cambios <i class="fa-solid fa-cloud-arrow-up"></i>';
     }
 }
 </script>
 </body>
-
 </html>
