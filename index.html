@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Actualización de Pacientes</title>
+    <title>Actualización de Pacientes - Gestión Segura</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -119,12 +119,33 @@
         button:disabled { background: #ccc; cursor: not-allowed; }
         
         .btn-save { background: var(--success) !important; margin-top: 35px; box-shadow: 0 4px 15px rgba(52, 199, 89, 0.3); }
+        .btn-exit { background: #86868b !important; margin-top: 15px; }
 
-        #save-msg {
-            margin-top: 15px; color: var(--success); font-size: 0.9rem; font-weight: 600; text-align: center;
-            display: flex; align-items: center; justify-content: center; gap: 8px; opacity: 0; transition: opacity 0.4s ease;
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            width: 90%;
+            max-width: 380px;
         }
-        #save-msg.show { opacity: 1; }
+        .toast {
+            background: #333;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 16px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            animation: slideUp 0.4s ease forwards;
+            font-size: 0.95rem;
+        }
+        .toast.error { background: #ff3b30; }
+        .toast.success { background: #34c759; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
         .hidden { display: none; }
         .fade { animation: fadeIn 0.6s ease-out forwards; }
@@ -135,37 +156,43 @@
 </head>
 <body>
 
+<div id="toast-container"></div>
+
 <div class="app-container fade">
     <div id="login-section">
         <h2>Bienvenido</h2>
         <p class="subtitle">Ingrese los datos para actualizar la ficha médica.</p>
         
-        <div class="field">
-            <label>Cédula Representante</label>
-            <div class="input-wrapper">
-                <i class="fa-solid fa-id-card main-icon"></i>
-                <input type="text" id="login-dni" placeholder="Ej: 12345678">
+        <form id="login-form" onsubmit="event.preventDefault(); validarAcceso();">
+            <div class="field">
+                <label>Cédula Representante</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-id-card main-icon"></i>
+                    <input type="text" id="login-dni" placeholder="Ej: 12345678" required autocomplete="username">
+                </div>
             </div>
-        </div>
-        
-        <div class="field">
-            <label>N° Historia</label>
-            <div class="input-wrapper">
-                <i class="fa-solid fa-folder-open main-icon"></i>
-                <input type="number" id="login-historia" placeholder="Número de registro">
+            
+            <div class="field">
+                <label>N° Historia</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-folder-open main-icon"></i>
+                    <input type="number" id="login-historia" placeholder="Número de registro" required>
+                </div>
             </div>
-        </div>
 
-        <div class="field">
-            <label>Contraseña</label>
-            <div class="input-wrapper">
-                <i class="fa-solid fa-lock main-icon"></i>
-                <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.keyCode==32) return false;">
-                <i class="fa-solid fa-eye toggle-pass" id="eye-icon-login" onclick="togglePasswordVisibility('login-pass', 'eye-icon-login')"></i>
+            <div class="field">
+                <label>Contraseña</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-lock main-icon"></i>
+                    <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.keyCode==32) return false;" required autocomplete="current-password">
+                    <i class="fa-solid fa-eye toggle-pass" id="eye-icon-login" onclick="togglePasswordVisibility('login-pass', 'eye-icon-login')"></i>
+                </div>
             </div>
-        </div>
 
-        <button class="btn-main" id="btn-entrar" onclick="validarAcceso()">Entrar <i class="fa-solid fa-arrow-right"></i></button>
+            <button type="submit" class="btn-main" id="btn-entrar">
+                Entrar <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </form>
         <p id="lock-msg" style="color: var(--error); font-size: 0.8rem; text-align: center; margin-top: 10px;" class="hidden"></p>
     </div>
 
@@ -230,8 +257,8 @@
             <div class="input-wrapper">
                 <i class="fa-solid fa-venus-mars main-icon"></i>
                 <select id="upd-genero">
-                    <option value="MASCULINO">Masculino</option>
-                    <option value="FEMENINO">Femenino</option>
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
                 </select>
             </div>
         </div>
@@ -305,10 +332,12 @@
             <div class="input-wrapper">
                 <i class="fa-solid fa-truck-ramp-box main-icon"></i>
                 <select id="upd-equipo">
-                    <option value="SILLA DE RUEDAS">Silla de ruedas</option>
-                    <option value="ANDADERA">Andadera</option>
-                    <option value="COCHE ORTOPÉDICO">Coche ortopédico</option>
-                    <option value="OTRO">Otro</option>
+                    <option value="NINGUNO">Ninguno (Lo cargan / Brazos)</option>
+                    <option value="SILLA DE RUEDAS">Silla de Ruedas</option>
+                    <option value="ANDADERA">Andadera / Caminador</option>
+                    <option value="COCHE ORTOPÉDICO">Coche Ortopédico</option>
+                    <option value="MULETAS-BASTON">Muletas o Bastón</option>
+                    <option value="OTRO">Otro equipo</option>
                 </select>
             </div>
         </div>
@@ -351,7 +380,21 @@
                     <option value="426">0426</option>
                     <option value="416">0416</option>
                 </select>
-                <input type="number" id="rep-num" class="group-rep" placeholder="1234567" disabled oninput="if(this.value.length > 7) this.value = this.value.slice(0, 7);">
+                <input type="number" id="rep-num" class="group-rep" disabled oninput="if(this.value.length > 7) this.value = this.value.slice(0, 7);">
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Teléfono Alternativo (Opcional)</label>
+            <div class="phone-group">
+                <select id="rep-cod-alt" class="group-rep" disabled>
+                    <option value="412">0412</option>
+                    <option value="424">0424</option>
+                    <option value="414">0414</option>
+                    <option value="426">0426</option>
+                    <option value="416">0416</option>
+                </select>
+                <input type="number" id="rep-num-alt" class="group-rep" disabled oninput="if(this.value.length > 7) this.value = this.value.slice(0, 7);">
             </div>
         </div>
 
@@ -365,7 +408,8 @@
         </div>
 
         <button class="btn-main btn-save" id="btn-guardar" onclick="guardarDatos()">Guardar Cambios <i class="fa-solid fa-cloud-arrow-up"></i></button>
-        <div id="save-msg"><i class="fa-solid fa-circle-check"></i> Datos actualizados con éxito</div>
+        
+        <button class="btn-main btn-exit" id="btn-salir" onclick="cerrarSesion()">Cerrar Sesión <i class="fa-solid fa-right-from-bracket"></i></button>
     </div>
 </div>
 
@@ -376,70 +420,103 @@
 
     let pacienteActual = null;
     let intentosFallidos = 0;
+    let timerInactividad;
+
+    // --- LÓGICA DE PERSISTENCIA (SESSION STORAGE) E INACTIVIDAD ---
+
+    window.onload = function() {
+        // Usamos sessionStorage: se borra al cerrar la pestaña
+        const sesionGuardada = sessionStorage.getItem('sesion_paciente');
+        if (sesionGuardada) {
+            pacienteActual = JSON.parse(sesionGuardada);
+            cargarDatosEnFormulario(pacienteActual);
+            iniciarControlInactividad();
+        }
+    };
+
+    function iniciarControlInactividad() {
+        const reiniciarTimer = () => {
+            clearTimeout(timerInactividad);
+            // 10 minutos = 600,000 milisegundos
+            timerInactividad = setTimeout(() => {
+                mostrarToast("Sesión expirada por inactividad");
+                setTimeout(cerrarSesion, 2000);
+            }, 600000); 
+        };
+
+        // Detectar cualquier movimiento o pulsación para resetear el tiempo
+        window.onmousemove = reiniciarTimer;
+        window.onkeydown = reiniciarTimer;
+        window.onclick = reiniciarTimer;
+        window.onscroll = reiniciarTimer;
+        reiniciarTimer();
+    }
+
+    function cerrarSesion() {
+        sessionStorage.removeItem('sesion_paciente');
+        location.reload();
+    }
+
+    // --- FUNCIONES DE ACCESO ---
+
+    async function validarAcceso() {
+        const btn = document.getElementById('btn-entrar');
+        const dni = document.getElementById('login-dni').value.trim();
+        const historia = document.getElementById('login-historia').value.trim();
+        const passRaw = document.getElementById('login-pass').value;
+        const passPlana = passRaw.replace(/\s/g, '');
+
+        if(!dni || !historia || !passPlana) return mostrarToast("Complete los campos requeridos.");
+
+        const originalContent = btn.innerHTML; 
+        btn.disabled = true;
+        btn.innerHTML = 'Accediendo... <i class="fa-solid fa-circle-notch fa-spin"></i>';
+
+        try {
+            const passHash = await generarHash(passPlana);
+            const { data, error } = await supabaseClient.from('pacientes').select('*')
+                .eq('dni_padre', dni).eq('id_historia', parseInt(historia)).eq('password', passHash).maybeSingle();
+
+            if (data) {
+                pacienteActual = data;
+                // Guardamos en sesión
+                sessionStorage.setItem('sesion_paciente', JSON.stringify(data));
+                cargarDatosEnFormulario(data);
+                iniciarControlInactividad();
+            } else {
+                intentosFallidos++;
+                if (intentosFallidos >= 5) bloquearLogin();
+                else {
+                    mostrarToast("Datos incorrectos. Intente de nuevo.");
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent; 
+                }
+            }
+        } catch (err) {
+            mostrarToast("Error de conexión");
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
+    }
+
+    // --- LISTAS Y UTILERÍAS ---
 
     const listaDiagnosticos = ["Acidosis Tubular Renal", "Acondroplasia", "Acortamiento De Miembros", "Acortamiento De Tendones", "Actitud Escoliótica", "Agenesia Del Cuerpo Calloso", "Agenesia Renal", "Albinismo", "Anemia Falciforme", "Anisometropía", "Anomalía De Axenfeld-rieger", "Artritis", "Artritis De Cadera", "Atrofia Cerebral", "Artrogriposis", "Atresia", "Atresia Tricuspídea", "Atrofia Muscular Espinal", "Cáncer (Paciente Oncológico)", "Cardiopatía Congénita", "Catarata Congénita", "Colagenopatía", "Conductas Disruptivas", "Crisis Convulsiva", "Cuadriparesia", "Cuadriplejia Espástica", "Deformidad De Sprengel", "Deformidad Torácica Y Lumbar", "Dermatitis", "Dermatitis Atópica", "Diabetes", "Dificultad De Aprendizaje", "Retraso Del Crecimiento", "Discapacidad Auditiva", "Discapacidad Intelectual", "Discapacidad Motora", "Discapacidad Visual", "Dislalia", "Dislexia", "Dismetría De Extremidades", "Displasia De Cadera", "Displasia Ectodérmica", "Displasia Esquelética", "Displejia", "Displejia Espástica", "Distonía Generalizada Axial", "Distrofia De La Retina", "Distrofia Muscular", "Distrofia Muscular De Duchenne", "Elefantiasis", "En Estudio", "Encefalitis", "Encefalocel", "Encefalomielitis", "Encefalopatía Epiléptica", "Encefalopatía Estática", "Encefalopatía Hepática", "Encefalopatía Hipóxico-isquémica", "Entesopatía Del Tendón De Aquiles", "Epidermólisis Ampollosa", "Epilepsia", "Errores Innatos Del Metabolismo", "Escápula Alada", "Esclerosis", "Esclerosis Tuberosa", "Escoliosis", "Espasmo Del Sollozo", "Espasmos Epilépticos", "Espasticidad Motora", "Espina Bífida", "Esquizencefalia", "Estenosis Pulmonar", "Estrabismo", "Falleció", "Fibromatosis", "Anquiloglosia", "Genu Recurvatum", "Genu Valgo", "Genu Varo", "Hemiparesia", "Hemiplejia", "Hidrocefalia", "Hidronefrosis", "Hipermetropía", "Hiperplasia Adrenal Congénita", "Hipertiroidismo", "Hipertonía Muscular", "Hipertrofia Muscular", "Hipoacusia", "Hipoplasia Craneofacial", "Hipoplasia", "Hipoplasia Del Nervio Óptico", "Hipotiroidismo", "Hipotiroidismo Congénito", "Hipotonía", "Hipoxia Neonatal", "Hipoxia Perinatal", "Inmadurez Cognitiva", "Inversión Del Cromosoma 9", "Isquemia", "Labio Leporino", "Leucemia", "Leucodistrofia", "Leucomalacia Periventricular", "Litiasis Renal", "Lordosis", "Malformación Arteriovenosa Isquémica", "Malformaciones Congénitas", "Marcha Aducta", "Meningitis Bacteriana", "Microcefalia", "Microtia", "Mielomeningocele", "Mucopolisacaridosis", "Mutismo Selectivo", "Nefritis", "Neuroblastoma", "Neurofibromatosis", "Neuromielitis", "Neuromúsculo-esquelética", "Osteogénesis Imperfecta", "Paladar Hendido", "Parálisis Braquial", "Parálisis Cerebral Espástica", "Parálisis Cerebral Infantil", "Parálisis Facial", "Parálisis Flácida", "Paraparesia Espástica Hereditaria", "Pie Aducto", "Pie Equinovaro", "Pie Plano", "Polidactilia", "Prematuridad", "Ptosis Palpebral", "Retardo En La Marcha", "Retraso Global Del Desarrollo", "Retraso Psicomotor", "Retinoblastoma", "Retraso En El Lenguaje", "Síncope Vasovagal", "Síndrome De Alopecia", "Síndrome Cerebeloso", "Síndrome Convulsivo", "Síndrome De Asperger", "Síndrome De Down", "Síndrome De Ehlers-danlos", "Síndrome De Encefalopatía Progresiva", "Síndrome De Escobar", "Síndrome De Goldenhar", "Síndrome De Guillain-barré", "Síndrome De Hanhart", "Síndrome De Holt Oram", "Síndrome De Hunter", "Síndrome De Kabuki", "Síndrome De Klinefelter", "Síndrome De Leigh", "Síndrome De Leser-trélat", "Síndrome De Malabsorción", "Síndrome De Marfan", "Síndrome De Mobius", "Síndrome De Ohtahara", "Síndrome De Poland", "Síndrome De Pompe", "Síndrome De Rett", "Síndrome De Rubinstein-taybi", "Síndrome De Turner", "Síndrome De Vacterl", "Síndrome De West", "Síndrome De Wiedemann-steiner", "Síndrome De Williams", "Síndrome Genético En Estudio", "Síndrome Ictérico", "Síndrome De Perthes", "Síndrome De Prader-willi", "Síndrome De Beckwith-wiedemann", "Soplo Cardíaco", "Tabique Nasal Desviado", "Tetraparesia Espástica", "Tiña Capitis", "Pectus Excavatum", "Torsión Tibial Interna", "Tortículis Congénita", "Toxoplasmosis", "Toxoplasmosis Congénita", "Trastorno De Ansiedad", "Trastorno Por Déficit De Atención E Hiperactividad", "Trastorno De La Conducta", "Trastorno De La Marcha", "Trastorno Del Aprendizaje", "Trastorno Del Habla", "Trastorno Del Lenguaje", "Trastorno Del Neurodesarrollo", "Trastorno Mental", "Trastorno Metabólico", "Trastorno Del Espectro Autista", "Trastornos Del Sueño", "Trauma Raquimedular Torácico", "Traumatismo Craneoencefálico", "Trastorno Paroxístico No Epiléptico", "Virus De Epstein-barr", "Otro"];
 
     const datosZulia = {
-        "Otros (Fuera del Zulia)": ["Foráneo"],
-        "Almirante Padilla": ["Isla de Toas", "Monagas"],
-        "Baralt": ["Libertador", "General Urdaneta", "Marcelino Briceño", "Pueblo Nuevo", "Manuel Guanipa Matos"],
-        "Cabimas": ["Ambrosio", "Carmen Herrera", "La Rosa", "Germán Ríos Linares", "Jorge Hernández", "Arístides Calvani", "Punta Gorda", "Rómulo Betancourt", "San Benito"],
-        "Catatumbo": ["Encontrados", "Udón Pérez"],
-        "Colón": ["Moralito", "San Carlos del Zulia", "Santa Cruz del Zulia", "Santa Bárbara", "Urribarrí"],
-        "Francisco Javier Pulgar": ["Agustín Codazzi", "Carlos Quevedo", "Francisco Javier Pulgar", "Simón Rodríguez"],
-        "Guajira": ["Alta Guajira", "Elias Sánchez Goyoyo", "Guajira", "Sinamaica"],
-        "Jesús Enrique Lossada": ["La Concepción", "San José", "Mariano Parra León", "José Ramón Yépez"],
-        "Jesús María Semprún": ["Jesús María Semprún", "Barí"],
-        "La Cañada de Urdaneta": ["Concepción", "Andrés Bello", "Chiquinquirá", "El Carmelo", "Potreritos"],
-        "Lagunillas": ["Libertad", "Alonso de Ojeda", "Venezuela", "Eleazar López Contreras", "Campo Lara"],
-        "Machiques de Perijá": ["Libertad", "San José de Perijá", "Bartolomé de las Casas", "Río Negro"],
-        "Mara": ["San Rafael", "La Sierrita", "Las Parcelas", "Luis de Vicente", "Monseñor Marcos Sergio Godoy", "Ricaurte", "Tamare"],
-        "Maracaibo": ["Antonio Borjas Romero", "Bolívar", "Cacique Mara", "Caracciolo Parra Pérez", "Cecilio Acosta", "Cristo de Aranza", "Coquivacoa", "Chiquinquirá", "Francisco Eugenio Bustamante", "Idelfonso Vásquez", "Juana de Ávila", "Luis Hurtado Higuera", "Manuel Dagnino", "Olegario Villalobos", "Raúl Leoni", "Santa Lucía", "Venancio Pulgar", "San Isidro"],
-        "Miranda": ["Altagracia", "Faria", "Ana María Campos", "San Antonio", "San José"],
-        "Páez": ["Guajira", "Elias Sánchez Goyoyo", "Sinamaica", "Alta Guajira"],
-        "Rosario de Perijá": ["Rosario", "Donaldo García", "Sixto Zambrano"],
-        "San Francisco": ["San Francisco", "El Bajo", "Domitila Flores", "Francisco Ochoa", "Los Cortijos", "Marcial Hernández", "José Domingo Rus"],
-        "Santa Rita": ["Santa Rita", "El Mene", "Pedro Lucas Urribarrí", "José Cenobio Urribarrí"],
-        "Simón Bolívar": ["Manuel Manrique", "Rafael Maria Baralt", "Rafael Urdaneta"],
-        "Sucre": ["Bobures", "Gibraltar", "Heras", "Monseñor Arturo Celeste Álvarez", "Rómulo Gallegos", "El Batey"],
-        "Valmore Rodríguez": ["Rafael Urdaneta", "La Victoria", "Raúl Cuenca"]
+        "Otros (Fuera del Zulia)": ["Foráneo"], "Almirante Padilla": ["Isla de Toas", "Monagas"], "Baralt": ["Libertador", "General Urdaneta", "Marcelino Briceño", "Pueblo Nuevo", "Manuel Guanipa Matos"], "Cabimas": ["Ambrosio", "Carmen Herrera", "La Rosa", "Germán Ríos Linares", "Jorge Hernández", "Arístides Calvani", "Punta Gorda", "Rómulo Betancourt", "San Benito"], "Catatumbo": ["Encontrados", "Udón Pérez"], "Colón": ["Moralito", "San Carlos del Zulia", "Santa Cruz del Zulia", "Santa Bárbara", "Urribarrí"], "Francisco Javier Pulgar": ["Agustín Codazzi", "Carlos Quevedo", "Francisco Javier Pulgar", "Simón Rodríguez"], "Guajira": ["Alta Guajira", "Elias Sánchez Goyoyo", "Guajira", "Sinamaica"], "Jesús Enrique Lossada": ["La Concepción", "San José", "Mariano Parra León", "José Ramón Yépez"], "Jesús María Semprún": ["Jesús María Semprún", "Barí"], "La Cañada de Urdaneta": ["Concepción", "Andrés Bello", "Chiquinquirá", "El Carmelo", "Potreritos"], "Lagunillas": ["Libertad", "Alonso de Ojeda", "Venezuela", "Eleazar López Contreras", "Campo Lara"], "Machiques de Perijá": ["Libertad", "San José de Perijá", "Bartolomé de las Casas", "Río Negro"], "Mara": ["San Rafael", "La Sierrita", "Las Parcelas", "Luis de Vicente", "Monseñor Marcos Sergio Godoy", "Ricaurte", "Tamare"], "Maracaibo": ["Antonio Borjas Romero", "Bolívar", "Cacique Mara", "Caracciolo Parra Pérez", "Cecilio Acosta", "Cristo de Aranza", "Coquivacoa", "Chiquinquirá", "Francisco Eugenio Bustamante", "Idelfonso Vásquez", "Juana de Ávila", "Luis Hurtado Higuera", "Manuel Dagnino", "Olegario Villalobos", "Raúl Leoni", "Santa Lucía", "Venancio Pulgar", "San Isidro"], "Miranda": ["Altagracia", "Faria", "Ana María Campos", "San Antonio", "San José"], "Páez": ["Guajira", "Elias Sánchez Goyoyo", "Sinamaica", "Alta Guajira"], "Rosario de Perijá": ["Rosario", "Donaldo García", "Sixto Zambrano"], "San Francisco": ["San Francisco", "El Bajo", "Domitila Flores", "Francisco Ochoa", "Los Cortijos", "Marcial Hernández", "José Domingo Rus"], "Santa Rita": ["Santa Rita", "El Mene", "Pedro Lucas Urribarrí", "José Cenobio Urribarrí"], "Simón Bolívar": ["Manuel Manrique", "Rafael Maria Baralt", "Rafael Urdaneta"], "Sucre": ["Bobures", "Gibraltar", "Heras", "Monseñor Arturo Celeste Álvarez", "Rómulo Gallegos", "El Batey"], "Valmore Rodríguez": ["Rafael Urdaneta", "La Victoria", "Raúl Cuenca"]
     };
 
-    function aNombrePropio(texto) {
-        if (!texto) return "";
-        return texto.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    function mostrarToast(mensaje, tipo = 'error') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${tipo}`;
+        toast.innerHTML = `<i class="fa-solid ${tipo === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> <span>${mensaje}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 3500);
     }
 
-    function capitalizarDiagnostico(texto) {
-        const conectores = ["de", "del", "la", "en", "el", "y", "a", "por", "e"];
-        return texto.toLowerCase().split(' ').map((palabra, index) => {
-            if (index > 0 && conectores.includes(palabra)) return palabra;
-            return palabra.charAt(0).toUpperCase() + palabra.slice(1);
-        }).join(' ');
-    }
-
-    function inicializarDiagnosticos() {
-        const selectDiag = document.getElementById('upd-diag-p');
-        selectDiag.innerHTML = '<option value="">Seleccione Diagnóstico</option>';
-        listaDiagnosticos.sort().forEach(diag => {
-            const opt = document.createElement('option');
-            opt.value = diag.toUpperCase();
-            opt.textContent = capitalizarDiagnostico(diag);
-            selectDiag.appendChild(opt);
-        });
-    }
-
-    function togglePasswordVisibility(inputId, iconId) {
-        const passInput = document.getElementById(inputId);
-        const eyeIcon = document.getElementById(iconId);
-        if (passInput.type === "password") {
-            passInput.type = "text";
-            eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            passInput.type = "password";
-            eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
-        }
-    }
+    function aNombrePropio(texto) { return texto ? texto.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : ""; }
 
     async function generarHash(password) {
         const cleanPass = password.replace(/\s/g, '');
@@ -448,145 +525,40 @@
         return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    function inicializarMunicipios() {
+    function togglePasswordVisibility(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        if (input.type === "password") { input.type = "text"; icon.classList.replace('fa-eye', 'fa-eye-slash'); }
+        else { input.type = "password"; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
+    }
+
+    // --- LÓGICA DE FORMULARIO ---
+
+    function inicializarSelects() {
+        const selectDiag = document.getElementById('upd-diag-p');
+        selectDiag.innerHTML = '<option value="">Seleccione Diagnóstico</option>';
+        listaDiagnosticos.sort().forEach(diag => {
+            const opt = document.createElement('option');
+            opt.value = diag.toUpperCase();
+            opt.textContent = diag;
+            selectDiag.appendChild(opt);
+        });
+
         const selectMun = document.getElementById('upd-mun');
         selectMun.innerHTML = '<option value="">Seleccione Municipio</option>';
-        Object.keys(datosZulia).sort().forEach(m => {
-            selectMun.innerHTML += `<option value="${m}">${m}</option>`;
-        });
+        Object.keys(datosZulia).sort().forEach(m => selectMun.innerHTML += `<option value="${m}">${m}</option>`);
     }
 
     function cargarParroquias() {
         const mun = document.getElementById('upd-mun').value;
         const selectPar = document.getElementById('upd-par');
         selectPar.innerHTML = '';
-        if(datosZulia[mun]) {
-            datosZulia[mun].sort().forEach(p => {
-                selectPar.innerHTML += `<option value="${p}">${p}</option>`;
-            });
-        }
+        if(datosZulia[mun]) datosZulia[mun].sort().forEach(p => selectPar.innerHTML += `<option value="${p}">${p}</option>`);
     }
 
     function habilitarEdicion(grupo) {
         const clase = grupo === 'nino' ? '.group-nino' : '.group-rep';
-        document.querySelectorAll(clase).forEach(el => {
-            el.disabled = !el.disabled;
-        });
-    }
-
-async function validarAcceso() {
-    const btn = document.getElementById('btn-entrar');
-    const dni = document.getElementById('login-dni').value;
-    const historia = document.getElementById('login-historia').value;
-    const passRaw = document.getElementById('login-pass').value;
-    const passPlana = passRaw.replace(/\s/g, '');
-
-    if(!dni || !historia || !passPlana) return alert("Complete todos los campos.");
-
-    // --- EFECTO DE CARGA ---
-    const originalContent = btn.innerHTML; // Guardamos "Entrar" y el icono
-    btn.disabled = true;
-    btn.innerHTML = 'Verificando... <i class="fa-solid fa-circle-notch fa-spin"></i>';
-    // -----------------------
-
-    try {
-        const passHash = await generarHash(passPlana);
-        const { data, error } = await supabaseClient.from('pacientes').select('*')
-            .eq('dni_padre', dni).eq('id_historia', parseInt(historia)).eq('password', passHash).maybeSingle();
-
-        if (data) {
-            pacienteActual = data;
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('form-section').classList.remove('hidden');
-            document.getElementById('form-section').classList.add('fade');
-            
-            document.getElementById('titulo-nombre').innerText = aNombrePropio(`${data.nombre1 || ''} ${data.apellido1 || ''}`);
-            
-            // Llenado de campos (tu lógica actual se mantiene igual...)
-            document.getElementById('upd-n1').value = aNombrePropio(data.nombre1);
-            document.getElementById('upd-n2').value = aNombrePropio(data.nombre2);
-            document.getElementById('upd-a1').value = aNombrePropio(data.apellido1);
-            document.getElementById('upd-a2').value = aNombrePropio(data.apellido2);
-            document.getElementById('upd-fecha').value = data.fecha_nacimiento || '';
-            document.getElementById('upd-cedula').value = data.cedula_niño || '';
-            document.getElementById('upd-genero').value = data.genero ? data.genero.toUpperCase() : 'MASCULINO';
-            
-            document.getElementById('rep-nombre').value = aNombrePropio(data.nombre_padre);
-            document.getElementById('rep-apellido').value = aNombrePropio(data.apellido_padre);
-            document.getElementById('rep-cedula').value = data.dni_padre;
-            
-            if (data.telefono_padre) {
-                let telStr = String(data.telefono_padre).replace('+58', '');
-                if (telStr.length === 10) {
-                    document.getElementById('rep-cod').value = telStr.slice(0, 3);
-                    document.getElementById('rep-num').value = telStr.slice(3);
-                } else {
-                    document.getElementById('rep-num').value = telStr;
-                }
-            }
-
-            inicializarMunicipios();
-            inicializarDiagnosticos();
-
-            if (data.municipio) {
-                const munFormat = Object.keys(datosZulia).find(m => m.toUpperCase() === data.municipio.toUpperCase());
-                if(munFormat){
-                    document.getElementById('upd-mun').value = munFormat;
-                    cargarParroquias();
-                    const parFormat = datosZulia[munFormat].find(p => p.toUpperCase() === data.parroquia.toUpperCase());
-                    if (parFormat) document.getElementById('upd-par').value = parFormat;
-                }
-            }
-            
-            document.getElementById('upd-sec').value = aNombrePropio(data.sector);
-            if (data.diagnostico_principal) document.getElementById('upd-diag-p').value = data.diagnostico_principal.toUpperCase();
-            document.getElementById('upd-diag-o').value = data.otros_diagnosticos || '';
-
-            marcarRadio('escolarizado', data.escolarizado);
-            marcarRadio('fisiatria', data.vio_fisiatria);
-            marcarRadio('camina', data.camina_independiente);
-            
-            if (data.equipo_traslado) document.getElementById('upd-equipo').value = data.equipo_traslado;
-
-            validarEdadManual();
-            toggleTraslado();
-
-} else {
-            intentosFallidos++;
-            if (intentosFallidos >= 5) {
-                bloquearLogin();
-            } else {
-                alert("Datos incorrectos.");
-                
-                // Estas son las líneas que restauran el botón:
-                btn.disabled = false;
-                btn.innerHTML = originalContent; 
-            }
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Ocurrió un error en la conexión.");
-        btn.disabled = false;
-        btn.innerHTML = originalContent;
-    }
-}
-
-    function bloquearLogin() {
-        const btn = document.getElementById('btn-entrar');
-        const msg = document.getElementById('lock-msg');
-        btn.disabled = true;
-        let seg = 60;
-        const int = setInterval(() => {
-            seg--;
-            msg.innerText = `Demasiados intentos. Espere ${seg}s.`;
-            msg.classList.remove('hidden');
-            if (seg <= 0) { clearInterval(int); btn.disabled = false; msg.classList.add('hidden'); intentosFallidos = 0; }
-        }, 1000);
-    }
-
-    function marcarRadio(nombre, valor) {
-        const radios = document.getElementsByName(nombre);
-        for (let r of radios) { if (r.value === String(valor)) r.checked = true; }
+        document.querySelectorAll(clase).forEach(el => el.disabled = !el.disabled);
     }
 
     function validarEdadManual() {
@@ -597,101 +569,124 @@ async function validarAcceso() {
     }
 
     function toggleTraslado() {
-        const caminaRadios = document.querySelector('input[name="camina"]:checked');
-        const camina = caminaRadios ? caminaRadios.value === "true" : false;
-        const divTraslado = document.getElementById('div-traslado');
-        const selectEquipo = document.getElementById('upd-equipo');
+        const camina = document.querySelector('input[name="camina"]:checked')?.value === "true";
+        document.getElementById('div-traslado').classList.toggle('hidden', camina);
+    }
+
+    function cargarDatosEnFormulario(data) {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('form-section').classList.remove('hidden');
+        document.getElementById('form-section').classList.add('fade');
         
-        if (camina) {
-            divTraslado.classList.add('hidden');
-        } else {
-            divTraslado.classList.remove('hidden');
-            if (!selectEquipo.value) selectEquipo.selectedIndex = 0; 
+        document.getElementById('titulo-nombre').innerText = aNombrePropio(`${data.nombre1 || ''} ${data.apellido1 || ''}`);
+        document.getElementById('upd-n1').value = aNombrePropio(data.nombre1);
+        document.getElementById('upd-n2').value = aNombrePropio(data.nombre2);
+        document.getElementById('upd-a1').value = aNombrePropio(data.apellido1);
+        document.getElementById('upd-a2').value = aNombrePropio(data.apellido2);
+        document.getElementById('upd-fecha').value = data.fecha_nacimiento || '';
+        document.getElementById('upd-cedula').value = data.cedula_nino || '';
+        document.getElementById('upd-genero').value = data.genero ? data.genero.toUpperCase() : 'M';
+        document.getElementById('rep-nombre').value = aNombrePropio(data.nombre_representante);
+        document.getElementById('rep-apellido').value = aNombrePropio(data.apellido_representante);
+        document.getElementById('rep-cedula').value = data.dni_padre;
+        
+        // Manejo de teléfonos
+        if (data.telefono_contacto) {
+            let telStr = String(data.telefono_contacto).replace('58', '');
+            if (telStr.length === 10) {
+                document.getElementById('rep-cod').value = telStr.slice(0, 3);
+                document.getElementById('rep-num').value = telStr.slice(3);
+            }
+        }
+
+        inicializarSelects();
+
+        // Cargar ubicación
+        if (data.municipio) {
+            const munFormat = Object.keys(datosZulia).find(m => m.toUpperCase() === data.municipio.toUpperCase());
+            if(munFormat){
+                document.getElementById('upd-mun').value = munFormat;
+                cargarParroquias();
+                const parFormat = datosZulia[munFormat].find(p => p.toUpperCase() === data.parroquia.toUpperCase());
+                if (parFormat) document.getElementById('upd-par').value = parFormat;
+            }
+        }
+        
+        document.getElementById('upd-sec').value = aNombrePropio(data.sector);
+        if (data.diagnostico_principal) document.getElementById('upd-diag-p').value = data.diagnostico_principal.toUpperCase();
+        document.getElementById('upd-diag-o').value = data.otros_diagnosticos || '';
+
+        const marcarRadio = (name, val) => document.getElementsByName(name).forEach(r => r.checked = (r.value === String(val)));
+        marcarRadio('escolarizado', data.escolarizado);
+        marcarRadio('fisiatria', data.vio_fisiatria);
+        marcarRadio('camina', data.camina_independiente);
+        
+        if (data.equipo_traslado) document.getElementById('upd-equipo').value = data.equipo_traslado;
+        validarEdadManual();
+        toggleTraslado();
+    }
+
+    async function guardarDatos() {
+        const btn = document.getElementById('btn-guardar');
+        const munVal = document.getElementById('upd-mun').value;
+        const diagVal = document.getElementById('upd-diag-p').value;
+        
+        if(!munVal || !diagVal) return mostrarToast("Complete los campos de ubicación y diagnóstico.");
+
+        btn.disabled = true;
+        btn.innerHTML = 'Guardando... <i class="fa-solid fa-spinner fa-spin"></i>';
+
+        const updates = {
+            nombre1: document.getElementById('upd-n1').value.trim().toUpperCase(),
+            nombre2: document.getElementById('upd-n2').value.trim().toUpperCase() || null,
+            apellido1: document.getElementById('upd-a1').value.trim().toUpperCase(),
+            apellido2: document.getElementById('upd-a2').value.trim().toUpperCase() || null,
+            fecha_nacimiento: document.getElementById('upd-fecha').value,
+            cedula_nino: document.getElementById('upd-cedula').value || null,
+            genero: document.getElementById('upd-genero').value,
+            municipio: munVal.toUpperCase(),
+            parroquia: document.getElementById('upd-par').value.toUpperCase(),
+            sector: document.getElementById('upd-sec').value.trim().toUpperCase() || null,
+            diagnostico_principal: diagVal,
+            otros_diagnosticos: document.getElementById('upd-diag-o').value.trim().toUpperCase() || null,
+            vio_fisiatria: document.querySelector('input[name="fisiatria"]:checked').value === "true",
+            camina_independiente: document.querySelector('input[name="camina"]:checked').value === "true",
+            escolarizado: document.querySelector('input[name="escolarizado"]:checked').value === "true",
+            equipo_traslado: document.getElementById('upd-equipo').value,
+            actualizado: true,
+            ultima_edicion: new Date()
+        };
+
+        const newPass = document.getElementById('upd-new-pass').value.replace(/\s/g, '');
+        if (newPass !== "") updates.password = await generarHash(newPass);
+
+        const { error } = await supabaseClient.from('pacientes').update(updates).eq('id_historia', pacienteActual.id_historia);
+
+        if (!error) { 
+            mostrarToast("¡Datos guardados!", "success");
+            sessionStorage.setItem('sesion_paciente', JSON.stringify({...pacienteActual, ...updates}));
+            btn.disabled = false;
+            btn.innerHTML = 'Guardar Cambios <i class="fa-solid fa-cloud-arrow-up"></i>';
+            document.querySelectorAll('.group-nino, .group-rep').forEach(el => el.disabled = true);
+        } else { 
+            mostrarToast("Error: " + error.message);
+            btn.disabled = false;
+            btn.innerHTML = 'Guardar Cambios <i class="fa-solid fa-cloud-arrow-up"></i>';
         }
     }
 
-async function guardarDatos() {
-    const btn = document.getElementById('btn-guardar');
-    const msg = document.getElementById('save-msg');
-    
-    const munVal = document.getElementById('upd-mun').value;
-    const parVal = document.getElementById('upd-par').value;
-    const diagVal = document.getElementById('upd-diag-p').value;
-    
-    // 1. Obtenemos los valores
-    let telNum = document.getElementById('rep-num').value.trim();
-    let codOperadora = document.getElementById('rep-cod').value; // Ej: 412
-    
-    const newPassRaw = document.getElementById('upd-new-pass').value;
-    const newPass = newPassRaw.replace(/\s/g, '');
-
-    if(!munVal || !parVal) return alert("Seleccione Municipio y Parroquia");
-    if(!diagVal) return alert("Seleccione un Diagnóstico Principal");
-    
-    // 2. LIMPIEZA CRÍTICA: 
-    // Si el usuario escribió el cero (ej: 0412...), lo eliminamos.
-    // También nos aseguramos de que la operadora no tenga el cero.
-    telNum = telNum.replace(/^0+/, ''); 
-    codOperadora = codOperadora.replace(/^0+/, '');
-
-    // 3. VALIDACIÓN: El cuerpo del número debe tener 7 dígitos (sin el 0 y sin la operadora)
-    if(telNum.length !== 7) {
-        return alert("Por favor, ingrese los 7 dígitos del número después del código de operadora.");
+    function bloquearLogin() {
+        const btn = document.getElementById('btn-entrar');
+        const msg = document.getElementById('lock-msg');
+        btn.disabled = true;
+        let seg = 60;
+        const int = setInterval(() => {
+            seg--;
+            msg.innerText = `Bloqueado por seguridad. Espere ${seg}s.`;
+            msg.classList.remove('hidden');
+            if (seg <= 0) { clearInterval(int); btn.disabled = false; msg.classList.add('hidden'); intentosFallidos = 0; }
+        }, 1000);
     }
-
-    btn.disabled = true;
-    btn.innerHTML = 'Guardando... <i class="fa-solid fa-spinner fa-spin"></i>';
-
-    // 4. CONSTRUCCIÓN FINAL PROFESIONAL
-    // Esto garantiza el formato +584121234567
-    const telefonoCompleto = `+58${codOperadora}${telNum}`;
-
-    const updates = {
-        nombre1: document.getElementById('upd-n1').value.trim().toUpperCase(),
-        nombre2: document.getElementById('upd-n2').value.trim().toUpperCase(),
-        apellido1: document.getElementById('upd-a1').value.trim().toUpperCase(),
-        apellido2: document.getElementById('upd-a2').value.trim().toUpperCase(),
-        fecha_nacimiento: document.getElementById('upd-fecha').value,
-        cedula_niño: document.getElementById('upd-cedula').value,
-        genero: document.getElementById('upd-genero').value.toUpperCase(),
-        nombre_padre: document.getElementById('rep-nombre').value.trim().toUpperCase(),
-        apellido_padre: document.getElementById('rep-apellido').value.trim().toUpperCase(),
-        dni_padre: document.getElementById('rep-cedula').value.trim().toUpperCase(),
-        
-        telefono_padre: telefonoCompleto, // <--- AQUÍ SE GUARDA CORRECTAMENTE
-        
-        municipio: munVal.toUpperCase(),
-        parroquia: parVal.toUpperCase(),
-        sector: document.getElementById('upd-sec').value.trim().toUpperCase(),
-        diagnostico_principal: diagVal.toUpperCase(),
-        otros_diagnosticos: document.getElementById('upd-diag-o').value.trim().toUpperCase(),
-        vio_fisiatria: document.querySelector('input[name="fisiatria"]:checked').value === "true",
-        camina_independiente: document.querySelector('input[name="camina"]:checked').value === "true",
-        escolarizado: document.querySelector('input[name="escolarizado"]:checked').value === "true",
-        equipo_traslado: (document.querySelector('input[name="camina"]:checked').value === "true") ? null : document.getElementById('upd-equipo').value.toUpperCase(),
-        actualizado: true,
-        ultima_edicion: new Date()
-    };
-
-    if (newPass !== "") {
-        updates.password = await generarHash(newPass);
-    }
-
-    const { error } = await supabaseClient.from('pacientes').update(updates).eq('id_historia', pacienteActual.id_historia);
-
-    if (!error) { 
-        msg.classList.add('show');
-        btn.disabled = false;
-        btn.innerHTML = 'Guardar Cambios <i class="fa-solid fa-cloud-arrow-up"></i>';
-        setTimeout(() => msg.classList.remove('show'), 5000);
-        
-        // Bloquear campos de nuevo
-        document.querySelectorAll('.group-nino, .group-rep').forEach(el => el.disabled = true);
-    } else { 
-        alert("Error al guardar: " + error.message);
-        btn.disabled = false;
-    }
-}
 </script>
 </body>
 </html>
